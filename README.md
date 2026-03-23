@@ -16,13 +16,13 @@ Você digita ações em português e o jogo narra o que acontece. Há uma criatu
 | 15–40%      | Caracteres começam a corromper (`░▒▓│┤╣`) |
 | 40–65%      | Silhueta do monstro aparece por trás do texto |
 | 65–85%      | Corrupção intensa, glitch vermelho, tela pulsa |
-| 85–100%     | Tela treme, text completamente distorcido |
+| 85–100%     | Tela treme, texto completamente distorcido |
 | 100%        | **GAME OVER** — a criatura te encontrou |
 
 ### Dicas
 
 - Fugir e se esconder **diminui** a proximidade
-- Fazer barulho ou explorar sons **aumenta** muito a proximidade
+- Fazer barulho ou explorar **aumenta** muito a proximidade
 - Nunca vá em direção ao que está no porão
 
 ---
@@ -34,7 +34,7 @@ Este jogo usa a **API da Anthropic** diretamente no browser (ideal para uso loca
 ### Uso local (recomendado para desenvolvimento)
 
 1. Clone o repositório
-2. Como o browser bloqueia chamadas diretas à API da Anthropic por CORS, use um servidor local com proxy, ou sirva via extensão como Live Server no VS Code com um proxy configurado.
+2. Como o browser bloqueia chamadas diretas à API da Anthropic por CORS, use um servidor local com proxy, ou server via extensão como Live Server no VS Code com um proxy configurado.
 
 ### Opção mais simples: GitHub Pages + proxy
 
