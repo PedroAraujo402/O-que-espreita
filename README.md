@@ -1,87 +1,56 @@
 # █ O QUE ESPREITA █
 
-> Um jogo de terror textual onde a realidade se corrompe à medida que o monstro se aproxima.
+Jogo de terror textual onde você explora uma mansão abandonada enquanto uma presença invisível se aproxima. Quanto mais perto o monstro, mais o texto se corrompe e a silhueta da criatura começa a aparecer por trás das palavras.
 
----
+## Como rodar
+
+### 1. Clone o repositório
+```bash
+git clone https://github.com/seu-usuario/o-que-espreita.git
+cd o-que-espreita
+```
+
+### 2. Configure a API Key
+```bash
+cp .env.example .env
+# Edite o .env e coloque sua ANTHROPIC_API_KEY
+```
+
+Obtenha sua chave em: https://console.anthropic.com
+
+### 3. Inicie o servidor
+```bash
+node server.js
+```
+
+### 4. Abra no navegador
+```
+http://localhost:3000
+```
+
+## Estrutura
+```
+o-que-espreita/
+├── server.js        # Servidor Node.js + proxy para a API
+├── package.json
+├── .env.example
+├── .gitignore
+└── public/
+    ├── index.html   # Estrutura da página
+    ├── style.css    # Visual (terminal de terror)
+    └── game.js      # Lógica do jogo
+```
 
 ## Como funciona
 
-Você digita ações em português e o jogo narra o que acontece. Há uma criatura invisível na mansão — quanto mais você se aproxima dela, mais o texto se distorce e a silhueta do monstro emerge nas sombras do ecrã.
+- Você digita ações em português e o Claude narra o resultado
+- Uma barra de **proximidade** (0–100%) rastreia o quão perto o monstro está
+- Conforme a proximidade aumenta, o texto se **corrompe progressivamente**
+- A partir de 40%, a **silhueta do monstro** aparece por trás do texto
+- Acima de 70%, glitches visuais, pulsação e tremores de tela
+- Chegou a 100%? A criatura te encontrou. **Fim.**
 
-### Níveis de proximidade
-
-| Proximidade | Efeito |
-|-------------|--------|
-| 0–15%       | Texto limpo, atmosfera sombria |
-| 15–40%      | Caracteres começam a corromper (`░▒▓│┤╣`) |
-| 40–65%      | Silhueta do monstro aparece por trás do texto |
-| 65–85%      | Corrupção intensa, glitch vermelho, tela pulsa |
-| 85–100%     | Tela treme, texto completamente distorcido |
-| 100%        | **GAME OVER** — a criatura te encontrou |
-
-### Dicas
-
+## Dicas
 - Fugir e se esconder **diminui** a proximidade
-- Fazer barulho ou explorar **aumenta** muito a proximidade
+- Fazer barulho **aumenta** a proximidade
 - Nunca vá em direção ao que está no porão
-
----
-
-## Setup
-
-Este jogo usa a **API da Anthropic** diretamente no browser (ideal para uso local ou via GitHub Pages com proxy).
-
-### Uso local (recomendado para desenvolvimento)
-
-1. Clone o repositório
-2. Como o browser bloqueia chamadas diretas à API da Anthropic por CORS, use um servidor local com proxy, ou server via extensão como Live Server no VS Code com um proxy configurado.
-
-### Opção mais simples: GitHub Pages + proxy
-
-Para rodar em produção sem expor sua API key, você precisará de um backend mínimo (ex: Cloudflare Worker, Vercel Function) que repasse as chamadas para a API da Anthropic com a key no servidor.
-
-Exemplo de Cloudflare Worker:
-```js
-export default {
-  async fetch(request) {
-    const body = await request.json();
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY, // variável de ambiente
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(body)
-    });
-    return new Response(await res.text(), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-  }
-}
-```
-
-Depois, no `game.js`, troque a URL:
-```js
-const response = await fetch('https://SEU-WORKER.workers.dev', { ... });
-```
-
----
-
-## Estrutura
-
-```
-o-que-espreita/
-├── index.html   — estrutura da página
-├── style.css    — visual, animações, efeitos
-├── game.js      — lógica do jogo e chamadas à API
-└── README.md    — este arquivo
-```
-
----
-
-## Tecnologias
-
-- HTML/CSS/JS puro — zero dependências
-- [Anthropic API](https://docs.anthropic.com) — `claude-sonnet-4-20250514`
-- Google Fonts — Share Tech Mono + Creepster
