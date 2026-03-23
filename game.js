@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// MONSTER ASCII ART (used as overlay)
+// MONSTER ASCII ART
 // ─────────────────────────────────────────────
 const MONSTER_ASCII = `
                                     ▄▄▄
@@ -24,19 +24,22 @@ const MONSTER_ASCII = `
 `;
 
 // ─────────────────────────────────────────────
-// CORRUPTION CHARS by level
+// CORRUPTION CHARS
 // ─────────────────────────────────────────────
 const CORRUPT_CHARS = {
-  low:    '░▒│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌',
-  mid:    '▓█▄▀▐▌▆▇▃▂▁▉▊▋╳╲╱⣿⣾⣽⣼⣻⣺⣹⣸⣷⣶⣵⣴⣳',
-  high:   '𝕳𝕰𝕷𝕷𝕺ꝸꝹꞘꞙꟊꟵꟶ꧋꧌꧍ᚱᚲᚳᚴᚵᚶᚷᚸᚹᚺᚻ₰₱₲₳₴₵₶₷₸₹',
-  extreme:'̴̧̨̢̛̖̗̘̙̜̝̞̟̠̣̤̥̦̩̪̫̬̭̮̯̰̱̲̳̹̺̻̼͇͈͉͍͎̀́̂̃̄̅̆̇̈̉̊̋̌̍̎̏̐̑̒̓̔̽̾̿̀́͂̓̈́͆͊͋͌̕̚ͅ'
+  low:  '░▒│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌',
+  mid:  '▓█▄▀▐▌▆▇▃▂▁▉▊▋╳╲╱⣿⣾⣽⣼⣻⣺⣹⣸⣷⣶⣵⣴⣳',
+  high: '𝕳𝕰𝕷𝕷𝕺ꝸꝹꞘꞙꟊꟵꟶ꧋꧌꧍ᚱᚲᚳᚴᚵᚶᚷᚸᚹᚺᚻ₰₱₲₳₴₵₶₷₸₹',
 };
 
 // ─────────────────────────────────────────────
-// SYSTEM PROMPT
+// STATE
 // ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `Você é o narrador de um jogo de terror textual chamado "O Que Espreita". 
+let proximity = 0;
+let conversationHistory = [];
+let isThinking = false;
+
+const SYSTEM_PROMPT = `Você é o narrador de um jogo de terror textual chamado "O Que Espreita".
 
 O jogador está numa mansão abandonada e há uma criatura invisível que pode sentir.
 
@@ -50,7 +53,7 @@ REGRAS ABSOLUTAS:
    - Ações neutras ou exploração: mantém ou aumenta levemente (+0 a +8)
    - Fazer barulho, chamar atenção, ir em direção a sons: aumenta muito (+10 a +25)
    - Se o jogador encontra o monstro diretamente: 100
-   
+
 4. Se a proximidade chegar a 100, a criatura o encontra e o jogo termina com uma cena de horror.
 5. Nunca revele explicitamente a aparência do monstro. Descreva apenas seus efeitos: cheiro, sons, sensações, sombras.
 6. À medida que a proximidade aumenta, sua narração fica mais fragmentada, caótica e menos coerente.
@@ -59,29 +62,22 @@ REGRAS ABSOLUTAS:
 CENÁRIO INICIAL: Uma mansão em ruínas numa noite sem lua. O jogador acabou de entrar pela porta principal.`;
 
 // ─────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────
-let proximity = 0;
-let conversationHistory = [];
-let isThinking = false;
-
-// ─────────────────────────────────────────────
 // CURSOR
 // ─────────────────────────────────────────────
 document.addEventListener('mousemove', e => {
   const c = document.getElementById('cursor');
   c.style.left = e.clientX + 'px';
-  c.style.top = e.clientY + 'px';
+  c.style.top  = e.clientY + 'px';
 });
 
 // ─────────────────────────────────────────────
 // START GAME
 // ─────────────────────────────────────────────
 function startGame() {
-  const intro = document.getElementById('intro-screen');
-  intro.style.transition = 'opacity 1s';
-  intro.style.opacity = '0';
-  setTimeout(() => { intro.style.display = 'none'; }, 1000);
+  const screen = document.getElementById('intro-screen');
+  screen.style.transition = 'opacity 1s';
+  screen.style.opacity = '0';
+  setTimeout(() => screen.style.display = 'none', 1000);
 
   const sessionId = Array.from({ length: 3 }, () =>
     Math.random().toString(16).substr(2, 4).toUpperCase()
@@ -89,43 +85,42 @@ function startGame() {
   document.getElementById('session-id').textContent = 'SESSÃO: ' + sessionId;
 
   appendGameEntry(null,
-    'Você está de pé na entrada da Mansão Hargreave.\nA porta atrás de você se fechou sozinha.\nO ar cheira a mofo... e a algo mais.\nUma presença.\nO que você faz?'
+    'Você está de pé na entrada da Mansão Hargreave.\n' +
+    'A porta atrás de você se fechou sozinha.\n' +
+    'O ar cheira a mofo... e a algo mais.\n' +
+    'Uma presença.\n' +
+    'O que você faz?'
   );
-
-  document.getElementById('player-input').focus();
 }
 
 // ─────────────────────────────────────────────
-// CORRUPT TEXT based on proximity
+// CORRUPT TEXT
 // ─────────────────────────────────────────────
 function corruptText(text, level) {
   if (level < 15) return text;
 
-  const chars = text.split('');
   const corruptRate = Math.min((level - 15) / 100, 0.7);
-
   let pool = CORRUPT_CHARS.low;
   if (level > 40) pool += CORRUPT_CHARS.mid;
   if (level > 65) pool += CORRUPT_CHARS.high;
 
-  return chars.map(ch => {
+  return text.split('').map(ch => {
     if (ch === '\n' || ch === ' ') return ch;
     if (Math.random() < corruptRate * 0.6) {
       return pool[Math.floor(Math.random() * pool.length)];
     }
-    if (level > 75 && Math.random() < 0.3) {
-      return ch + '̴̧̨̢';
-    }
+    if (level > 75 && Math.random() < 0.3) return ch + '̴̧̨̢';
     return ch;
   }).join('');
 }
 
 // ─────────────────────────────────────────────
-// APPEND ENTRY TO OUTPUT
+// APPEND ENTRY
 // ─────────────────────────────────────────────
 function appendGameEntry(playerAction, gameResponse) {
-  const output = document.getElementById('output');
-  const entry = document.createElement('div');
+  const output  = document.getElementById('output');
+  const wrap    = document.getElementById('messages-wrap');
+  const entry   = document.createElement('div');
   entry.className = 'entry';
 
   if (playerAction) {
@@ -138,14 +133,9 @@ function appendGameEntry(playerAction, gameResponse) {
   const gameDiv = document.createElement('div');
   gameDiv.className = 'entry-game';
   gameDiv.textContent = corruptText(gameResponse, proximity);
-
-  if (proximity > 70) {
-    gameDiv.classList.add('glitch-text');
-  }
+  if (proximity > 70) gameDiv.classList.add('glitch-text');
 
   entry.appendChild(gameDiv);
-
-  const wrap = document.getElementById('messages-wrap');
   wrap.appendChild(entry);
   output.scrollTop = output.scrollHeight;
 
@@ -163,54 +153,45 @@ function updateMonsterOverlay() {
     return;
   }
 
-  const opacityVal = Math.min((proximity - 40) / 60, 0.85);
-  layer.style.opacity = opacityVal.toString();
+  layer.style.opacity = String(Math.min((proximity - 40) / 60, 0.85));
 
-  const lines = MONSTER_ASCII.split('\n');
-  const outputHeight = document.getElementById('output').clientHeight;
-  const linesNeeded = Math.floor(outputHeight / 22) + 5;
-
-  let monsterText = '';
-  for (let i = 0; i < linesNeeded; i++) {
-    monsterText += lines[i % lines.length] + '\n';
-  }
+  const lines       = MONSTER_ASCII.split('\n');
+  const linesNeeded = Math.floor(document.getElementById('output').clientHeight / 22) + 5;
+  let monsterText   = '';
+  for (let i = 0; i < linesNeeded; i++) monsterText += lines[i % lines.length] + '\n';
   layer.textContent = monsterText;
 
-  if (proximity > 80) {
-    layer.style.color = '#8b000055';
-  } else if (proximity > 60) {
-    layer.style.color = '#8b000033';
-  } else {
-    layer.style.color = '#8b000018';
-  }
+  layer.style.color = proximity > 80 ? '#8b000055'
+                    : proximity > 60 ? '#8b000033'
+                    :                  '#8b000018';
 }
 
 // ─────────────────────────────────────────────
 // UPDATE PROXIMITY UI
 // ─────────────────────────────────────────────
 function updateProximityUI() {
-  const fill = document.getElementById('proximity-fill');
-  const val = document.getElementById('proximity-value');
-  const inputSection = document.getElementById('input-section');
-  const output = document.getElementById('output');
+  const fill        = document.getElementById('proximity-fill');
+  const val         = document.getElementById('proximity-value');
+  const inputSec    = document.getElementById('input-section');
+  const output      = document.getElementById('output');
 
-  fill.style.width = proximity + '%';
+  fill.style.width              = proximity + '%';
   fill.style.backgroundPosition = proximity + '% 0';
-  val.textContent = proximity + '%';
+  val.textContent               = proximity + '%';
 
   if (proximity > 70) {
     val.style.color = '#cc0000';
-    inputSection.classList.add('danger');
+    inputSec.classList.add('danger');
     output.classList.add('danger-pulse');
     document.body.style.setProperty('--green', '#cc2200');
   } else if (proximity > 40) {
     val.style.color = '#886600';
-    inputSection.classList.remove('danger');
+    inputSec.classList.remove('danger');
     output.classList.remove('danger-pulse');
     document.body.style.setProperty('--green', '#88aa00');
   } else {
     val.style.color = '#00ff41';
-    inputSection.classList.remove('danger');
+    inputSec.classList.remove('danger');
     output.classList.remove('danger-pulse');
     document.body.style.setProperty('--green', '#00ff41');
   }
@@ -223,19 +204,14 @@ function updateProximityUI() {
 }
 
 // ─────────────────────────────────────────────
-// PARSE CLAUDE RESPONSE
+// PARSE RESPONSE
 // ─────────────────────────────────────────────
 function parseResponse(rawText) {
   const match = rawText.match(/\[PROXIMIDADE:(\d+)\]/);
-  let newProximity = proximity;
-  let cleanText = rawText;
-
-  if (match) {
-    newProximity = Math.max(0, Math.min(100, parseInt(match[1])));
-    cleanText = rawText.replace(/\[PROXIMIDADE:\d+\]/g, '').trim();
-  }
-
-  return { text: cleanText, proximity: newProximity };
+  return {
+    text:      rawText.replace(/\[PROXIMIDADE:\d+\]/g, '').trim(),
+    proximity: match ? Math.max(0, Math.min(100, parseInt(match[1]))) : proximity,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -247,33 +223,31 @@ function triggerGameOver(finalText) {
   output.style.background = '#000';
 
   setTimeout(() => {
-    const entry = document.createElement('div');
+    const entry   = document.createElement('div');
     entry.className = 'entry';
-
     const gameDiv = document.createElement('div');
     gameDiv.className = 'entry-game';
-    gameDiv.style.color = '#8b0000';
+    gameDiv.style.color      = '#8b0000';
     gameDiv.style.textShadow = '0 0 10px #ff000066';
-    gameDiv.textContent = finalText + '\n\n\n[ FIM ]';
-
+    gameDiv.textContent      = finalText + '\n\n\n[ FIM ]';
     entry.appendChild(gameDiv);
     document.getElementById('messages-wrap').appendChild(entry);
     output.scrollTop = output.scrollHeight;
 
     document.getElementById('player-input').disabled = true;
-    document.getElementById('send-btn').disabled = true;
+    document.getElementById('send-btn').disabled     = true;
     document.getElementById('prompt-prefix').style.color = '#8b0000';
-    document.getElementById('title').style.color = '#ff0000';
+    document.getElementById('title').style.color         = '#ff0000';
   }, 1200);
 }
 
 // ─────────────────────────────────────────────
-// SEND ACTION
+// SEND ACTION — calls local proxy /api/chat
 // ─────────────────────────────────────────────
 async function sendAction() {
   if (isThinking) return;
 
-  const input = document.getElementById('player-input');
+  const input  = document.getElementById('player-input');
   const action = input.value.trim();
   if (!action) return;
 
@@ -289,34 +263,37 @@ async function sendAction() {
   conversationHistory.push({ role: 'user', content: action });
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: SYSTEM_PROMPT,
-        messages: conversationHistory
-      })
+        system:     SYSTEM_PROMPT,
+        messages:   conversationHistory,
+      }),
     });
 
     const data = await response.json();
+
+    if (!data.content) {
+      const errMsg = data.error?.message || JSON.stringify(data);
+      throw new Error(errMsg);
+    }
+
     const rawText = data.content.map(b => b.text || '').join('');
     const { text, proximity: newProx } = parseResponse(rawText);
 
     proximity = newProx;
     updateProximityUI();
-
     conversationHistory.push({ role: 'assistant', content: rawText });
     appendGameEntry(action, text);
 
-    if (proximity >= 100) {
-      setTimeout(() => triggerGameOver(text), 500);
-    }
+    if (proximity >= 100) setTimeout(() => triggerGameOver(text), 500);
 
   } catch (err) {
-    console.error(err);
-    appendGameEntry(action, '[ERRO DE CONEXÃO... algo interferiu no sinal]');
+    console.error('Erro:', err);
+    appendGameEntry(action, `[ERRO — ${err.message}]`);
   } finally {
     isThinking = false;
     thinkEl.style.display = 'none';
@@ -328,28 +305,24 @@ async function sendAction() {
 }
 
 // ─────────────────────────────────────────────
-// EVENT LISTENERS
+// KEYBOARD
 // ─────────────────────────────────────────────
-document.getElementById('start-btn').addEventListener('click', startGame);
-document.getElementById('send-btn').addEventListener('click', sendAction);
-
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    const introVisible = document.getElementById('intro-screen').style.display !== 'none'
-      && document.getElementById('intro-screen').style.opacity !== '0';
-    if (introVisible) {
-      startGame();
-    } else {
+    const intro = document.getElementById('intro-screen');
+    if (intro.style.display === 'none' || document.activeElement === document.getElementById('player-input')) {
       sendAction();
     }
   }
 });
 
-// Ambient coordinates flicker
+// ─────────────────────────────────────────────
+// AMBIENT: coordinate flicker
+// ─────────────────────────────────────────────
 setInterval(() => {
-  const coord = document.getElementById('coord-display');
   if (proximity > 30) {
-    const fake = () => (Math.random() * 999 | 0).toString().padStart(3, '0');
-    coord.textContent = `COORD: ${fake()}.${fake()} // ${fake()}.${fake()}`;
+    const n = () => (Math.random() * 999 | 0).toString().padStart(3, '0');
+    document.getElementById('coord-display').textContent =
+      `COORD: ${n()}.${n()} // ${n()}.${n()}`;
   }
 }, 2000);
