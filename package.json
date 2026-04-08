@@ -1,0 +1,15 @@
+{
+  "name": "o-que-espreita",
+  "version": "1.0.0",
+  "description": "Jogo de terror textual com horror cósmico e distorção progressiva",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["horror", "text-game", "claude", "anthropic"],
+  "license": "MIT"
+}
